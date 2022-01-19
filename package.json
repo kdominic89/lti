@@ -1,0 +1,25 @@
+{
+  "name": "@kdominic/lti",
+  "version": "0.1.0",
+  "description": "Minimal LTI launch request validator.",
+  "main": "lti.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kdominic89/lti.git"
+  },
+  "keywords": [
+    "lti",
+    "launch",
+    "request",
+    "validator"
+  ],
+  "author": "KDominic",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kdominic89/lti/issues"
+  },
+  "homepage": "https://github.com/kdominic89/lti#readme"
+}
