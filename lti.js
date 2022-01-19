@@ -80,12 +80,29 @@ module.exports = (function() {
     const LTI_PROVIDER_ROLE    = Symbol('role');
 
     class LtiProvider {
-        constructor(consumerKey, consumerSecret, { encodeSecret=false, useOriginProtocol=false }={}) {
+        constructor(consumerKey, consumerSecret, { encodeSecret=false, fallbackProtokoll='http' }={}) {
+            if (typeof consumerKey === 'undefined' || consumerKey === null) {
+                throw new new TypeError(`Parameter 'consumerKey' must be specified`);
+            }
+
+            if (typeof consumerSecret !== 'string') {
+                throw new TypeError(`Parameter 'consumerSecret' must be a string`);
+            }
+            
+            if (typeof fallbackProtokoll !== 'string') {
+                throw new TypeError(`Parameter '{ fallbackProtokoll }' must be a string ('http' or 'https')`);
+            }
+            fallbackProtokoll = fallbackProtokoll.replace('://', '');
+
+            if (!(/^https?$/.test(fallbackProtokoll))) {
+                throw new TypeError(`Parameter '{ fallbackProtokoll }' must be a string ('http' or 'https')`);
+            }
+
             Object.defineProperties(this, {
-                consumerKey:       { enumerable: true,  value: consumerKey    },
-                consumerSecret:    { enumerable: false, value: consumerSecret },
-                encodeSecret:      { enumerable: true,  value: encodeSecret   },
-                useOriginProtocol: { enumerable: true,  value: useOriginProtocol   },
+                consumerKey:       { enumerable: true,  value: consumerKey       },
+                consumerSecret:    { enumerable: false, value: consumerSecret    },
+                encodeSecret:      { enumerable: true,  value: !!encodeSecret    },
+                fallbackProtokoll: { enumerable: true,  value: fallbackProtokoll },
     
                 [LTI_PROVIDER_VALID]:   { value: false, writable: true },
                 [LTI_PROVIDER_ERROR]:   { value: null,  writable: true },
@@ -209,7 +226,17 @@ module.exports = (function() {
             this[LTI_PROVIDER_VALID] = false;
             this[LTI_PROVIDER_ERROR] = null;
     
-            const { method, body } = req;
+            const { method, headers, body } = req;
+
+            if (headers === null || typeof headers !== 'object') {
+                this[LTI_PROVIDER_ERROR] = new Error('Request headers required');
+                return this;
+            }
+            
+            if (typeof headers?.host !== 'string') {
+                this[LTI_PROVIDER_ERROR] = new Error(`headers required a host`);
+                return this;
+            }
     
             if (!LtiProvider.isValidMessage(method, body)) {
                 this[LTI_PROVIDER_ERROR] = new Error('Invalid LTI launch request');
@@ -268,13 +295,11 @@ module.exports = (function() {
                 return this;
             }
 
-            const originalOrigin = new URL(req.get('origin'));
-            const originalHost   = new URL(req.get('host'));
-            const originalUrl    = new URL(req.originalUrl ?? req.url, originalHost);
+            const protocol = typeof req.protocol === 'string' && /^https?/.test(req.protocol) ? req.protocol : this.fallbackProtokoll;
+            const host     = new URL(/^https?:\/\//.test(headers.host) ? headers.host : `${protocol}://${headers.host}`);
+            const url      = new URL(req.originalUrl ?? req.url, host);
 
-            const url = this.useOriginProtocol ? `${originalOrigin.protocol}//${originalUrl.host}${originalUrl.pathname}` : originalUrl.href;
-
-            const oauthSignature = new OAuthSignature({ method, url, body });
+            const oauthSignature = new OAuthSignature({ method, url: url.href, body });
     
             if (!oauthSignature.isValid(oauth_signature, { secret: this.consumerSecret, encode: this.encodeSecret })) {
                 this[LTI_PROVIDER_ERROR] = new Error('Invalid LTI Signature');
