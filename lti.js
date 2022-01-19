@@ -80,11 +80,12 @@ module.exports = (function() {
     const LTI_PROVIDER_ROLE    = Symbol('role');
 
     class LtiProvider {
-        constructor(consumerKey, consumerSecret, encodeSecret=false) {
+        constructor(consumerKey, consumerSecret, { encodeSecret=false, useOriginProtocol=false }={}) {
             Object.defineProperties(this, {
-                consumerKey:    { enumerable: true,  value: consumerKey    },
-                consumerSecret: { enumerable: false, value: consumerSecret },
-                encodeSecret:   { enumerable: true,  value: encodeSecret   },
+                consumerKey:       { enumerable: true,  value: consumerKey    },
+                consumerSecret:    { enumerable: false, value: consumerSecret },
+                encodeSecret:      { enumerable: true,  value: encodeSecret   },
+                useOriginProtocol: { enumerable: true,  value: useOriginProtocol   },
     
                 [LTI_PROVIDER_VALID]:   { value: false, writable: true },
                 [LTI_PROVIDER_ERROR]:   { value: null,  writable: true },
@@ -266,10 +267,14 @@ module.exports = (function() {
                 this[LTI_PROVIDER_ERROR] = new Error(`'oauth_timestamp' expired`);
                 return this;
             }
-    
-            const originalHost   = new URL(req.get('origin') ?? req.get('host'));
+
+            const originalOrigin = new URL(req.get('origin'));
+            const originalHost   = new URL(req.get('host'));
             const originalUrl    = new URL(req.originalUrl ?? req.url, originalHost);
-            const oauthSignature = new OAuthSignature({ method, url: originalUrl.href, body });
+
+            const url = this.useOriginProtocol ? `${originalOrigin.protocol}//${originalUrl.host}${originalUrl.pathname}` : originalUrl.href;
+
+            const oauthSignature = new OAuthSignature({ method, url, body });
     
             if (!oauthSignature.isValid(oauth_signature, { secret: this.consumerSecret, encode: this.encodeSecret })) {
                 this[LTI_PROVIDER_ERROR] = new Error('Invalid LTI Signature');
