@@ -1,6 +1,6 @@
 {
   "name": "@kdominic/lti",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Minimal LTI launch request validator.",
   "main": "lti.js",
   "scripts": {

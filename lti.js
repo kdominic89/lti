@@ -80,7 +80,7 @@ module.exports = (function() {
     const LTI_PROVIDER_ROLE    = Symbol('role');
 
     class LtiProvider {
-        constructor(consumerKey, consumerSecret, { encodeSecret=false, fallbackProtokoll='http' }={}) {
+        constructor(consumerKey, consumerSecret, { encodeSecret=false, fallbackProtokoll='http', overwriteProtocol=false }={}) {
             if (typeof consumerKey === 'undefined' || consumerKey === null) {
                 throw new new TypeError(`Parameter 'consumerKey' must be specified`);
             }
@@ -103,6 +103,7 @@ module.exports = (function() {
                 consumerSecret:    { enumerable: false, value: consumerSecret    },
                 encodeSecret:      { enumerable: true,  value: !!encodeSecret    },
                 fallbackProtokoll: { enumerable: true,  value: fallbackProtokoll },
+                overwriteProtocol: { enumerable: true,  value: typeof overwriteProtocol === 'boolean' ? overwriteProtocol : false },
     
                 [LTI_PROVIDER_VALID]:   { value: false, writable: true },
                 [LTI_PROVIDER_ERROR]:   { value: null,  writable: true },
@@ -295,7 +296,7 @@ module.exports = (function() {
                 return this;
             }
 
-            const protocol = typeof req.protocol === 'string' && /^https?/.test(req.protocol) ? req.protocol : this.fallbackProtokoll;
+            const protocol = !this.overwriteProtocol && typeof req.protocol === 'string' && /^https?/.test(req.protocol) ? req.protocol : this.fallbackProtokoll;
             const host     = new URL(/^https?:\/\//.test(headers.host) ? headers.host : `${protocol}://${headers.host}`);
             const url      = new URL(req.originalUrl ?? req.url, host);
 
